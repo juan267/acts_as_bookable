@@ -41,11 +41,11 @@ module ActsAsBookable
           end
 
           def schedule_required?
-            self.booking_opts && self.booking_opts && self.booking_opts[:time_type] != :none
+            self.rentable? && self.booking_opts && self.booking_opts && self.booking_opts[:time_type] != :none
           end
 
           def capacity_required?
-            self.booking_opts && self.booking_opts[:capacity_type] != :none
+            self.rentable? && self.booking_opts && self.booking_opts[:capacity_type] != :none
           end
         end
       end
