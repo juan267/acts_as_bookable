@@ -7,6 +7,7 @@ module ActsAsBookable
 
     belongs_to :bookable, polymorphic: true
     belongs_to :booker,   polymorphic: true
+    has_one :line_item
 
     validates_presence_of :bookable
     validates_presence_of :booker
