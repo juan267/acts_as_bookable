@@ -100,7 +100,6 @@ module ActsAsBookable
           diff = a[:opening] <=> b[:opening] if (diff == 0)
           diff
         end
-
         # Iterate over steps
         steps.each do |step|
           if (started_count == 0)
@@ -117,7 +116,7 @@ module ActsAsBookable
             end
 
             if block_given?
-              last_attrs = block.call(last_attrs.clone, step[:attrs],(step[:opening] == 1 ? :open : :close))
+              last_attrs = block.call(last_attrs.clone, step[:attrs], :open)
             else
               last_attrs = step[:attrs]
             end

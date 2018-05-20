@@ -228,7 +228,7 @@ module ActsAsBookable::Bookable
               when :close
                 res = {amount: a[:amount] - b[:amount]}
               end
-              raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s) if (res[:amount] >= self.capacity)
+              raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s) if (res[:amount] > self.capacity)
               res
             end
           # else, just sum the amounts (fixed times are not intervals and they overlap if are the same)
