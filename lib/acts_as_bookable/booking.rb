@@ -7,7 +7,7 @@ module ActsAsBookable
 
     belongs_to :bookable, polymorphic: true
     belongs_to :booker,   polymorphic: true
-    belongs_to :line_item, class_name: "Spree::LineItem"
+    belongs_to :line_item, class_name: "Spree::LineItem", optional: true
 
     validates_presence_of :bookable
     validates_presence_of :booker
