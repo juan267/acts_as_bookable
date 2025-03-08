@@ -250,7 +250,7 @@ module ActsAsBookable::Bookable
         options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
         
         begin
-          check_availability!(options)
+          check_availability!(**options)
         rescue ActsAsBookable::AvailabilityError
           false
         end

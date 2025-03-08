@@ -44,7 +44,7 @@ module ActsAsBookable
         options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
         
         # check availability
-        bookable.check_availability!(options) if bookable.class.bookable?
+        bookable.check_availability!(**options) if bookable.class.bookable?
 
         # create the new booking
         booking_params = options.merge({booker: self, bookable: bookable})
