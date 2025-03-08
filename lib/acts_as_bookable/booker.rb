@@ -38,13 +38,16 @@ module ActsAsBookable
       # @raise ActiveRecord::RecordInvalid if trying to create an invalid booking
       #
       # Example:
-      #   @user.book!(@room)
-      def book!(bookable, opts={})
+      #   @user.book!(@room, time_start: Date.today, time_end: Date.tomorrow, amount: 2)
+      def book!(bookable, time_start: nil, time_end: nil, time: nil, amount: nil, **opts)
+        # Combine all keyword arguments into a single options hash
+        options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
+        
         # check availability
-        bookable.check_availability!(opts) if bookable.class.bookable?
+        bookable.check_availability!(options) if bookable.class.bookable?
 
         # create the new booking
-        booking_params = opts.merge({booker: self, bookable: bookable})
+        booking_params = options.merge({booker: self, bookable: bookable})
         booking = ActsAsBookable::Booking.create!(booking_params)
 
         # reload the bookable to make changes available

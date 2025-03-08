@@ -59,23 +59,25 @@ module ActsAsBookable::Bookable
         #
         # Actual validation
         #
-        unpermitted_params = unpermitted_params
-          .select{ |p| options.has_key?(p) }
+        unpermitted_found = unpermitted_params
+          .select{ |p| options.key?(p) }
           .map{ |p| "'#{p}'"}
+        
         wrong_types = required_params
-          .select{ |k,v| options.has_key?(k) && (v.select{|type| options[k].is_a?(type)}.length == 0) }
+          .select{ |k,v| options.key?(k) && v.none? { |type| options[k].is_a?(type) } }
           .map{ |k,v| "'#{k}' must be a '#{v.join(' or ')}' but '#{options[k].class.to_s}' found" }
-        required_params = required_params
-          .select{ |k,v| !options.has_key?(k) }
+        
+        missing_params = required_params
+          .select{ |k,v| !options.key?(k) }
           .map{ |k,v| "'#{k}'" }
 
         #
         # Raise OptionsInvalid if some invalid parameters were found
         #
-        if unpermitted_params.length + required_params.length + wrong_types.length > 0
+        if unpermitted_found.length + missing_params.length + wrong_types.length > 0
           message = ""
-          message << " unpermitted parameters: #{unpermitted_params.join(',')}." if (unpermitted_params.length > 0)
-          message << " missing parameters: #{required_params.join(',')}." if (required_params.length > 0)
+          message << " unpermitted parameters: #{unpermitted_found.join(',')}." if (unpermitted_found.length > 0)
+          message << " missing parameters: #{missing_params.join(',')}." if (missing_params.length > 0)
           message << " parameters type mismatch: #{wrong_types.join(',')}" if (wrong_types.length > 0)
           raise ActsAsBookable::OptionsInvalid.new(self, message)
         end
@@ -109,9 +111,9 @@ module ActsAsBookable::Bookable
             bookable_across_occurrences: [true, false]
           }
           self.booking_opts.each_pair do |key, val|
-            if !permitted_options.has_key? key
+            if !permitted_options.key?(key)
               raise ActsAsBookable::InitializationError.new(self, "#{key} is not a valid option")
-            elsif !permitted_options[key].include? val
+            elsif !permitted_options[key].include?(val)
               raise ActsAsBookable::InitializationError.new(self, "#{val} is not a valid value for #{key}. Allowed values are: #{permitted_options[key]}")
             end
           end
@@ -160,15 +162,18 @@ module ActsAsBookable::Bookable
       # @raise ActsAsBookable::AvailabilityError if the bookable is not available for given options
       #
       # Example:
-      #   @room.check_availability!(from: Date.today, to: Date.tomorrow, amount: 2)
-      def check_availability!(opts)
+      #   @room.check_availability!(time_start: Date.today, time_end: Date.tomorrow, amount: 2)
+      def check_availability!(time_start: nil, time_end: nil, time: nil, amount: nil, **opts)
+        # Combine all keyword arguments into a single options hash
+        options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
+        
         # validates options
-        self.validate_booking_options!(opts)
+        self.validate_booking_options!(options)
 
         # Capacity check (done first because it doesn't require additional queries)
         if self.booking_opts[:capacity_type] != :none
           # Amount > capacity
-          if opts[:amount] > self.capacity
+          if options[:amount] > self.capacity
             raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.amount_gt_capacity', model: self.class.to_s)
           end
         end
@@ -181,35 +186,35 @@ module ActsAsBookable::Bookable
           # If it's bookable across recurrences, just check start time and end time
           if self.booking_opts[:bookable_across_occurrences]
             # Check start time
-            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_start]))
+            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, options[:time_start]))
               time_check_ok = false
             end
             # Check end time
-            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time_end]))
+            if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, options[:time_end]))
               time_check_ok = false
             end
           # If it's not bookable across recurrences, check if the whole interval is included in an occurrence
           else
             # Check the whole interval
-            if !(ActsAsBookable::TimeUtils.interval_in_schedule?(self.schedule, opts[:time_start], opts[:time_end]))
+            if !(ActsAsBookable::TimeUtils.interval_in_schedule?(self.schedule, options[:time_start], options[:time_end]))
               time_check_ok = false
             end
           end
           # If something went wrong
           unless time_check_ok
-            raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_interval', model: self.class.to_s, time_start: opts[:time_start], time_end: opts[:time_end])
+            raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_interval', model: self.class.to_s, time_start: options[:time_start], time_end: options[:time_end])
           end
         end
         if self.booking_opts[:time_type] == :fixed
-          if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, opts[:time]))
-            raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_time', model: self.class.to_s, time: opts[:time])
+          if !(ActsAsBookable::TimeUtils.time_in_schedule?(self.schedule, options[:time]))
+            raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.unavailable_time', model: self.class.to_s, time: options[:time])
           end
         end
 
         ##
         # Real capacity check (calculated with overlapped bookings)
         #
-        overlapped = ActsAsBookable::Booking.overlapped(self, opts)
+        overlapped = ActsAsBookable::Booking.overlapped(self, options)
 
         # If capacity_type is :closed cannot book if already booked (no matter if amount < capacity)
         if (self.booking_opts[:capacity_type] == :closed && !overlapped.empty?)
@@ -219,12 +224,12 @@ module ActsAsBookable::Bookable
         if (self.booking_opts[:capacity_type] == :open && !overlapped.empty?)
           # if time_type is :range, split in sub-intervals and check the maximum sum of amounts against capacity for each sub-interval
           if (self.booking_opts[:time_type] == :range)
-            if(overlapped.sum(:amount) + opts[:amount] > self.capacity)
+            if(overlapped.sum(:amount) + options[:amount] > self.capacity)
               raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s)
             end
           # else, just sum the amounts (fixed times are not intervals and they overlap if are the same)
           else
-            if(overlapped.sum(:amount) + opts[:amount] > self.capacity)
+            if(overlapped.sum(:amount) + options[:amount] > self.capacity)
               raise ActsAsBookable::AvailabilityError.new ActsAsBookable::T.er('.availability.already_booked', model: self.class.to_s)
             end
           end
@@ -239,10 +244,13 @@ module ActsAsBookable::Bookable
       # @return true if the bookable is available for given options, otherwise return false
       #
       # Example:
-      #   @room.check_availability!(from: Date.today, to: Date.tomorrow, amount: 2)
-      def check_availability(opts)
+      #   @room.check_availability(time_start: Date.today, time_end: Date.tomorrow, amount: 2)
+      def check_availability(time_start: nil, time_end: nil, time: nil, amount: nil, **opts)
+        # Combine all keyword arguments into a single options hash
+        options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
+        
         begin
-          check_availability!(opts)
+          check_availability!(options)
         rescue ActsAsBookable::AvailabilityError
           false
         end
@@ -256,9 +264,12 @@ module ActsAsBookable::Bookable
       # @param opts The booking options
       #
       # Example:
-      #   @room.be_booked!(@user, from: Date.today, to: Date.tomorrow, amount: 2)
-      def be_booked!(booker, opts={})
-        booker.book!(self, opts)
+      #   @room.be_booked!(@user, time_start: Date.today, time_end: Date.tomorrow, amount: 2)
+      def be_booked!(booker, time_start: nil, time_end: nil, time: nil, amount: nil, **opts)
+        # Combine all keyword arguments into a single options hash
+        options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
+        
+        booker.book!(self, **options)
       end
 
       ##
@@ -267,8 +278,13 @@ module ActsAsBookable::Bookable
       # @raise ActsAsBookable::OptionsInvalid if options are not valid
       # @param opts The booking options
       #
-      def validate_booking_options!(opts)
-        self.class.validate_booking_options!(opts)
+      # Example:
+      #   @room.validate_booking_options!(time_start: Date.today, time_end: Date.tomorrow, amount: 2)
+      def validate_booking_options!(time_start: nil, time_end: nil, time: nil, amount: nil, **opts)
+        # Combine all keyword arguments into a single options hash
+        options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
+        
+        self.class.validate_booking_options!(options)
       end
 
       def booker?
