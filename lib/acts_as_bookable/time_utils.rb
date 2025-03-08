@@ -12,7 +12,7 @@ module ActsAsBookable
       # @param interval_start The beginning time of the interval to match against
       # @param interval_end The ending time of the interval to match against
       #
-      def time_in_interval? (time, interval_start, interval_end)
+      def time_in_interval?(time, interval_start, interval_end)
         time >= interval_start && time < interval_end
       end
 
@@ -26,14 +26,14 @@ module ActsAsBookable
       #
       def interval_in_schedule?(schedule, interval_start, interval_end)
         # Check if interval_start and interval_end falls within any occurrence
-        return false if(!time_in_schedule?(schedule,interval_start) || !time_in_schedule?(schedule,interval_end))
+        return false if(!time_in_schedule?(schedule, interval_start) || !time_in_schedule?(schedule, interval_end))
 
         # Check if both interval_start and interval_end falls within the SAME occurrence
-        between = schedule.occurrences_between(interval_start, interval_end, { spans: true })
+        between = schedule.occurrences_between(interval_start, interval_end, spans: true)
         contains = false
         between.each do |oc|
           oc_end = oc + schedule.duration
-          contains = true if (time_in_interval?(interval_start,oc,oc_end) && time_in_interval?(interval_end,oc,oc_end))
+          contains = true if (time_in_interval?(interval_start, oc, oc_end) && time_in_interval?(interval_end, oc, oc_end))
           break if contains
         end
 

@@ -13,7 +13,7 @@ module ActsAsBookable
       #   class User < ActiveRecord::Base
       #     acts_as_booker
       #   end
-      def acts_as_booker(opts={})
+      def acts_as_booker(**opts)
         class_eval do
           has_many :bookings, as: :booker, dependent: :destroy, class_name: '::ActsAsBookable::Booking'
         end
@@ -47,7 +47,7 @@ module ActsAsBookable
         bookable.check_availability!(**options) if bookable.class.bookable?
 
         # create the new booking
-        booking_params = options.merge({booker: self, bookable: bookable})
+        booking_params = options.merge(booker: self, bookable: bookable)
         booking = ActsAsBookable::Booking.create!(booking_params)
 
         # reload the bookable to make changes available

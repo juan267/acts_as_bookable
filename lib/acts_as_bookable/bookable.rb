@@ -12,7 +12,7 @@ module ActsAsBookable
     #   class Room < ActiveRecord::Base
     #     acts_as_bookable
     #   end
-    def acts_as_bookable(options={})
+    def acts_as_bookable(**options)
       bookable(options)
     end
 

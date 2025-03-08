@@ -218,7 +218,12 @@ module ActsAsBookable::Bookable
         ##
         # Real capacity check (calculated with overlapped bookings)
         #
-        overlapped = ActsAsBookable::Booking.overlapped(self, **options)
+        overlapped = ActsAsBookable::Booking.overlapped(
+          self, 
+          time: options[:time], 
+          time_start: options[:time_start], 
+          time_end: options[:time_end]
+        )
 
         # If capacity_type is :closed cannot book if already booked (no matter if amount < capacity)
         if (self.booking_opts[:capacity_type] == :closed && !overlapped.empty?)
