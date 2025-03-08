@@ -170,6 +170,10 @@ module ActsAsBookable::Bookable
         # validates options
         self.validate_booking_options!(**options)
 
+        options[:time_start] = options[:time_start].to_time if options[:time_start].present?
+        options[:time_end] = options[:time_end].to_time if options[:time_end].present?
+        options[:time] = options[:time].to_time if options[:time].present?
+
         # Capacity check (done first because it doesn't require additional queries)
         if self.booking_opts[:capacity_type] != :none
           # Amount > capacity
