@@ -17,18 +17,18 @@ module ActsAsBookable
     ##
     # Retrieves overlapped bookings, given a bookable and some booking options
     #
-    scope :overlapped, ->(bookable, time: nil, time_start: nil, time_end: nil) {
+    scope :overlapped, ->(bookable, opts = {}) {
       query = where(bookable_id: bookable.id)
 
       # Time options
-      if(time.present?)
-        query = DBUtils.time_comparison(query, 'time', '=', time)
+      if(opts[:time].present?)
+        query = DBUtils.time_comparison(query, 'time', '=', opts[:time])
       end
-      if(time_start.present?)
-        query = DBUtils.time_comparison(query, 'time_end', '>=', time_start)
+      if(opts[:time_start].present?)
+        query = DBUtils.time_comparison(query, 'time_end', '>=', opts[:time_start])
       end
-      if(time_end.present?)
-        query = DBUtils.time_comparison(query, 'time_start', '<', time_end)
+      if(opts[:time_end].present?)
+        query = DBUtils.time_comparison(query, 'time_start', '<', opts[:time_end])
       end
       query
     }

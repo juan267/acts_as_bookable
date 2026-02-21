@@ -219,10 +219,8 @@ module ActsAsBookable::Bookable
         # Real capacity check (calculated with overlapped bookings)
         #
         overlapped = ActsAsBookable::Booking.overlapped(
-          self, 
-          time: options[:time], 
-          time_start: options[:time_start], 
-          time_end: options[:time_end]
+          self,
+          {time: options[:time], time_start: options[:time_start], time_end: options[:time_end]}
         )
 
         # If capacity_type is :closed cannot book if already booked (no matter if amount < capacity)
@@ -293,7 +291,7 @@ module ActsAsBookable::Bookable
         # Combine all keyword arguments into a single options hash
         options = { time_start: time_start, time_end: time_end, time: time, amount: amount, **opts }.compact
         
-        self.class.validate_booking_options!(**options)
+        self.class.validate_booking_options!(options)
       end
 
       def booker?
